@@ -16,7 +16,7 @@ const RoomPage = () => {
   const socketRef = useRef(null);
 
   useEffect(() => {
-    // connect once globally
+    // ✅ Connect socket only once
     socketRef.current = io("https://hangout-mates.onrender.com", {
       transports: ["websocket"],
     });
@@ -83,6 +83,24 @@ const RoomPage = () => {
     setJoined(true);
   };
 
+  // ✅ STUN + TURN config
+  const iceConfig = {
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+      {
+        urls: "turn:global.relay.metered.ca:80",
+        username: "demo", // replace with your Metered username
+        credential: "demo", // replace with your Metered credential
+      },
+      {
+        urls: "turn:global.relay.metered.ca:80?transport=tcp",
+        username: "demo",
+        credential: "demo",
+      },
+    ],
+  };
+
   // ✅ Create Peer (initiator)
   const createPeer = (targetId, stream) => {
     const socket = socketRef.current;
@@ -90,12 +108,7 @@ const RoomPage = () => {
       initiator: true,
       trickle: false,
       stream,
-      config: {
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" },
-        ],
-      },
+      config: iceConfig,
     });
 
     peer.on("signal", (signalData) => {
@@ -103,7 +116,7 @@ const RoomPage = () => {
     });
 
     peer.on("stream", (remoteStream) => {
-      console.log("📺 Received remote stream");
+      console.log("📺 Received remote stream from:", targetId);
       setRemoteStreams((prev) => [
         ...prev,
         { id: targetId, stream: remoteStream },
@@ -120,12 +133,7 @@ const RoomPage = () => {
       initiator: false,
       trickle: false,
       stream,
-      config: {
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" },
-        ],
-      },
+      config: iceConfig,
     });
 
     peer.on("signal", (signalData) => {
@@ -133,7 +141,7 @@ const RoomPage = () => {
     });
 
     peer.on("stream", (remoteStream) => {
-      console.log("📺 Received remote stream");
+      console.log("📺 Received remote stream from:", userId);
       setRemoteStreams((prev) => [
         ...prev,
         { id: userId, stream: remoteStream },
