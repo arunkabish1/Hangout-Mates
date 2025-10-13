@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { io } from "socket.io-client";
 import SimplePeer from "simple-peer";
@@ -11,102 +11,137 @@ const RoomPage = () => {
 
   const [myStream, setMyStream] = useState(null);
   const [remoteStreams, setRemoteStreams] = useState([]);
-  const myVideoRef = React.useRef(null);
-  const peersRef = React.useRef({});
+  const myVideoRef = useRef(null);
+  const peersRef = useRef({});
+  const socketRef = useRef(null);
 
   useEffect(() => {
-    // Create a new socket instance when component mounts
-    const socket = io("https://hangout-mates.onrender.com", {
+    // connect once globally
+    socketRef.current = io("https://hangout-mates.onrender.com", {
       transports: ["websocket"],
     });
 
-    socket.on("connect", () => {
-      console.log("✅ Connected to server:", socket.id);
+    socketRef.current.on("connect", () => {
+      console.log("✅ Connected to server:", socketRef.current.id);
     });
 
-    // Receive updated participant list
-    socket.on("room-data", (data) => {
+    socketRef.current.on("room-data", (data) => {
       console.log("📡 Room data received:", data);
       setParticipants(data.participants);
     });
 
-    // Someone else joined
-    socket.on("user-joined", (data) => {
-      console.log("👥 Someone joined:", data);
+    socketRef.current.on("user-disconnected", ({ userId }) => {
+      console.log("❌ User disconnected:", userId);
+      if (peersRef.current[userId]) {
+        peersRef.current[userId].destroy();
+        delete peersRef.current[userId];
+      }
+      setRemoteStreams((prev) => prev.filter((v) => v.id !== userId));
     });
-    
-   
-    
-    return () => {
-      socket.disconnect();
-      console.log("❌ Disconnected socket");
-    };
-  }, []); // run once when component mounts
 
-  const joinRoom = () => {
+    return () => {
+      socketRef.current.disconnect();
+      console.log("🔌 Socket disconnected");
+    };
+  }, []);
+
+  const joinRoom = async () => {
     if (!userName.trim()) return alert("Enter your name first!");
 
-    // Create socket inside joinRoom to ensure it's connected when we emit
-    const socket = io("https://hangout-mates.onrender.com", {
-      transports: ["websocket"],
-    });
-
+    const socket = socketRef.current;
     socket.emit("join-room", { roomId, userName });
 
-    // ✅ Get user’s camera/mic
-    navigator.mediaDevices
-      .getUserMedia({ video: true, audio: true })
-      .then((stream) => {
-        setMyStream(stream);
-        if (myVideoRef.current) myVideoRef.current.srcObject = stream;
-        
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+      setMyStream(stream);
+      if (myVideoRef.current) myVideoRef.current.srcObject = stream;
 
-        // When someone joins, start a peer connection
-        socket.on("user-joined", ({ userId }) => {
-          const peer = new SimplePeer({
-            initiator: true,
-            trickle: false,
-            stream,
-          });
+      // When someone joins, start peer connection
+      socket.on("user-joined", ({ userId }) => {
+        console.log("👥 New user joined:", userId);
+        const peer = createPeer(userId, stream);
+        peersRef.current[userId] = peer;
+      });
 
-          // Send your signal data to the new user
-          peer.on("signal", (signalData) => {
-            socket.emit("signal", { roomId, signalData, targetId: userId });
-          });
-
-          // Add remote stream when received
-          peer.on("stream", (remoteStream) => {
-            setRemoteStreams((prev) => [...prev, remoteStream]);
-          });
-
-          peersRef.current[userId] = peer;
-        });
-
-        // When someone sends signal data to you
-        socket.on("signal", ({ signalData, targetId }) => {
-          let peer = peersRef.current[targetId];
-          if (!peer) {
-            peer = new SimplePeer({ initiator: false, trickle: false, stream });
-            peersRef.current[targetId] = peer;
-
-            peer.on("signal", (signalData) => {
-              socket.emit("signal", { roomId, signalData, targetId });
-            });
-
-            peer.on("stream", (remoteStream) => {
-              setRemoteStreams((prev) => [...prev, remoteStream]);
-            });
-          }
+      // Handle incoming signal
+      socket.on("signal", ({ signalData, targetId }) => {
+        let peer = peersRef.current[targetId];
+        if (!peer) {
+          peer = addPeer(signalData, targetId, stream);
+          peersRef.current[targetId] = peer;
+        } else {
           peer.signal(signalData);
-        });
-      })
-      .catch((err) => console.error("Camera/Mic error:", err));
-
-    socket.on("room-data", (data) => {
-      setParticipants(data.participants);
-    });
+        }
+      });
+    } catch (err) {
+      console.error("🎥 Camera/Mic error:", err);
+    }
 
     setJoined(true);
+  };
+
+  // ✅ Create Peer (initiator)
+  const createPeer = (targetId, stream) => {
+    const socket = socketRef.current;
+    const peer = new SimplePeer({
+      initiator: true,
+      trickle: false,
+      stream,
+      config: {
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+          { urls: "stun:stun1.l.google.com:19302" },
+        ],
+      },
+    });
+
+    peer.on("signal", (signalData) => {
+      socket.emit("signal", { roomId, signalData, targetId });
+    });
+
+    peer.on("stream", (remoteStream) => {
+      console.log("📺 Received remote stream");
+      setRemoteStreams((prev) => [
+        ...prev,
+        { id: targetId, stream: remoteStream },
+      ]);
+    });
+
+    return peer;
+  };
+
+  // ✅ Add Peer (receiver)
+  const addPeer = (incomingSignal, userId, stream) => {
+    const socket = socketRef.current;
+    const peer = new SimplePeer({
+      initiator: false,
+      trickle: false,
+      stream,
+      config: {
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+          { urls: "stun:stun1.l.google.com:19302" },
+        ],
+      },
+    });
+
+    peer.on("signal", (signalData) => {
+      socket.emit("signal", { roomId, signalData, targetId: userId });
+    });
+
+    peer.on("stream", (remoteStream) => {
+      console.log("📺 Received remote stream");
+      setRemoteStreams((prev) => [
+        ...prev,
+        { id: userId, stream: remoteStream },
+      ]);
+    });
+
+    peer.signal(incomingSignal);
+    return peer;
   };
 
   if (!joined) {
@@ -135,6 +170,7 @@ const RoomPage = () => {
       <h1 className="text-2xl font-bold mb-4">🎥 Hangout Room: {roomId}</h1>
       <p className="mb-2 text-gray-600">You are logged in as {userName}</p>
       <h2 className="text-xl mb-2">Participants:</h2>
+
       {/* 🎥 Video Section */}
       <div className="flex flex-wrap gap-4 justify-center mb-6">
         {/* My Video */}
@@ -147,9 +183,9 @@ const RoomPage = () => {
         ></video>
 
         {/* Remote Videos */}
-        {remoteStreams.map((stream, index) => (
+        {remoteStreams.map(({ id, stream }) => (
           <video
-            key={index}
+            key={id}
             autoPlay
             playsInline
             ref={(ref) => {
