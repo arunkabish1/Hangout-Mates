@@ -16,7 +16,7 @@ const RoomPage = () => {
 
   useEffect(() => {
     // Create a new socket instance when component mounts
-    const socket = io("http://localhost:5000", {
+    const socket = io("https://hangout-mates.onrender.com", {
       transports: ["websocket"],
     });
 
@@ -47,7 +47,7 @@ const RoomPage = () => {
     if (!userName.trim()) return alert("Enter your name first!");
 
     // Create socket inside joinRoom to ensure it's connected when we emit
-    const socket = io("http://localhost:5000", {
+    const socket = io("https://hangout-mates.onrender.com", {
       transports: ["websocket"],
     });
 

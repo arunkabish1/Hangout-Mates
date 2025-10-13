@@ -7,7 +7,7 @@ const LandingPage = () => {
 
   const createRoom = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/rooms", {
+      const res = await fetch("https://hangout-mates.onrender.com/api/rooms", {
         method: "POST",
       });
       const data = await res.json();
