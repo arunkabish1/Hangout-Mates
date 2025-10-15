@@ -192,7 +192,7 @@ const RoomPage = () => {
       {remoteStreams.length > 0 && (
         <div className="mt-10 w-full flex flex-col items-center">
           <h2 className="text-gray-700 font-semibold text-lg mb-3">
-            Other Participants
+            Captured Image
           </h2>
           <div className="flex gap-4 flex-wrap justify-center">
             {remoteStreams.map((stream, i) => (
