@@ -103,7 +103,7 @@ const RoomPage = () => {
             JobMates<span className="text-blue-600">.com</span>
           </h1>
           <p className="text-gray-600 mt-2 text-sm">
-            Room ID: <span className="font-semibold">{roomId}</span>
+            Your ID: <span className="font-semibold">{roomId}</span>
           </p>
         </div>
 

@@ -45,7 +45,7 @@ const LandingPage = () => {
       <section className="flex-1 flex flex-col justify-center items-center text-center px-6">
         <h2 className="text-4xl font-bold text-gray-800 mb-3">
           
-          Your Next Tourism Career Starts Here 🚀
+          Your Next Career Starts Here 🚀
         </h2>
         <p className="text-gray-600 mb-8 max-w-md">
           Find your dream job or refer talented friends to top companies. Use your referral code to get started.
