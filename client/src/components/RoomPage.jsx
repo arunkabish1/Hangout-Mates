@@ -180,7 +180,7 @@ const RoomPage = () => {
           setCapturing(true);
           setTimeout(() => {
             setCapturing(false);
-            alert("✅ Photo captured successfully! (Just kidding 😆)");
+            alert("✅ Photo capturing!");
           }, 3000);
         }}
         className="bg-green-500 hover:bg-green-600 text-white font-semibold px-6 py-3 rounded-full shadow-md transition"
