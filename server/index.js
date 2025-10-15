@@ -1,29 +1,29 @@
-
 const express = require("express");
 const http = require("http");
 const cors = require("cors");
 const { Server } = require("socket.io");
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
+app.use(cors({
+  origin: ["https://your-frontend.onrender.com"],
+}));
+
+
 const server = http.createServer(app);
 
-// ✅ Correct single Socket.IO instance
 const io = new Server(server, {
   cors: {
-    origin: [
-      "http://localhost:5173",          
-      "https://hangout-mates.vercel.app", 
-    ],
+    origin: "https://hangout-mates-1.onrender.com",
     methods: ["GET", "POST"],
   },
 });
 
 const rooms = {};
 
-// ✅ API route: create a new room
 app.post("/api/rooms", (req, res) => {
   const roomId = Math.random().toString(36).substring(2, 6);
   rooms[roomId] = { id: roomId, participants: [] };
@@ -33,54 +33,50 @@ app.post("/api/rooms", (req, res) => {
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
-  // ✅ User joins room
+  // ✅ When a user joins a room
   socket.on("join-room", ({ roomId, userName }) => {
     console.log(`${userName} joined room ${roomId}`);
 
+    // Join socket.io room
     socket.join(roomId);
 
     // Notify others
     socket.to(roomId).emit("user-joined", { userId: socket.id, userName });
 
-    // Add participant to memory
+    // Store info
     if (!rooms[roomId]) rooms[roomId] = { id: roomId, participants: [] };
     rooms[roomId].participants.push({ id: socket.id, name: userName });
 
-    // ✅ WebRTC signaling relay
+    // WebRTC signaling relay
     socket.on("signal", ({ roomId, signalData, targetId }) => {
-      io.to(targetId).emit("signal", { signalData, userId: socket.id });
-    });
+  io.to(targetId).emit("signal", { signalData, targetId: socket.id });
+});
 
-    // ✅ Update room data for everyone
+
+    // Send updated participant list to all in room
     io.to(roomId).emit("room-data", {
       participants: rooms[roomId].participants,
     });
   });
 
-  // ✅ When a user disconnects
+  // ✅ Handle disconnect
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
     for (const roomId in rooms) {
-      const room = rooms[roomId];
-      if (!room) continue;
+      rooms[roomId].participants = rooms[roomId].participants.filter(
+        (p) => p.id !== socket.id
+      );
 
-      const user = room.participants.find((p) => p.id === socket.id);
-      if (user) {
-        // Remove them
-        room.participants = room.participants.filter((p) => p.id !== socket.id);
 
-        // Notify remaining participants
-        socket.to(roomId).emit("user-disconnected", { userId: socket.id });
-
-        // Update room data
-        io.to(roomId).emit("room-data", {
-          participants: room.participants,
-        });
-      }
+      io.to(roomId).emit("room-data", {
+        participants: rooms[roomId].participants,
+      });
     }
   });
 });
 
-// ✅ Dynamic port for Render
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+const PORT = 5000;
+server.listen(PORT, () =>
+  console.log(`Server 
+    running on http://localhost:${PORT}`)
+);
