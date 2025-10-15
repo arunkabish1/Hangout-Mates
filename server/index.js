@@ -9,7 +9,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use(cors({
-  origin: ["https://your-frontend.onrender.com"],
+  origin: ["https://hangout-mates-1.onrender.com"],
 }));
 
 
