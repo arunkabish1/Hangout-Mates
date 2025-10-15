@@ -8,9 +8,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.use(cors({
-  origin: ["https://hangout-mates-1.onrender.com"],
-}));
+// app.use(cors({
+//   origin: ["https://your-frontend.onrender.com"],
+// }));
 
 
 const server = http.createServer(app);
