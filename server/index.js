@@ -8,9 +8,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// app.use(cors({
-//   origin: ["https://your-frontend.onrender.com"],
-// }));
+app.use(cors({
+  origin: ["https://hangout-mates-1.onrender.com", "https://hangout-mates.onrender.com"],
+}));
 
 
 const server = http.createServer(app);
@@ -26,7 +26,7 @@ const rooms = {};
 
 app.post("/api/rooms", (req, res) => {
   const roomId = Math.random().toString(36).substring(2, 6);
-  const roomLink = `${FRONTEND_URL}/room/${roomId}`;
+  const roomLink = `https://hangout-mates.onrender.com/room/${roomId}`;
   console.log(FRONTEND_URL)
   rooms[roomId] = { id: roomId, participants: [] };
   res.json({ roomId,roomLink  });
