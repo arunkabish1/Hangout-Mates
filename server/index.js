@@ -26,8 +26,10 @@ const rooms = {};
 
 app.post("/api/rooms", (req, res) => {
   const roomId = Math.random().toString(36).substring(2, 6);
+  const roomLink = `${FRONTEND_URL}/room/${roomId}`;
+  console.log(FRONTEND_URL)
   rooms[roomId] = { id: roomId, participants: [] };
-  res.json({ roomId });
+  res.json({ roomId,roomLink  });
 });
 
 io.on("connection", (socket) => {
@@ -35,6 +37,11 @@ io.on("connection", (socket) => {
 
   // ✅ When a user joins a room
   socket.on("join-room", ({ roomId, userName }) => {
+
+    if (!rooms[roomId]) {
+      socket.emit("error", "Room does not exist.");
+      return;
+    }
     console.log(`${userName} joined room ${roomId}`);
 
     // Join socket.io room
@@ -56,6 +63,15 @@ io.on("connection", (socket) => {
     // Send updated participant list to all in room
     io.to(roomId).emit("room-data", {
       participants: rooms[roomId].participants,
+    });
+  });
+
+   socket.on("chat-message", ({ name, message }) => {
+    // Find the room the user is in
+    const userRooms = Object.keys(socket.rooms).filter((r) => r !== socket.id);
+    userRooms.forEach((roomId) => {
+      // Broadcast message to all in the room except sender
+      socket.to(roomId).emit("chat-message", { name, message });
     });
   });
 
