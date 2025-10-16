@@ -24,9 +24,10 @@ const RoomPage = () => {
 
   // ✅ Connect socket once
   useEffect(() => {
-    const socket = io("https://hangout-mates.onrender.com", {
-      transports: ["websocket"],
-    });
+    const socket = io("https://hangout-mates-1.onrender.com", {
+  transports: ["websocket"],
+});
+
     socketRef.current = socket;
 
     socket.on("connect", () => console.log("✅ Connected:", socket.id));

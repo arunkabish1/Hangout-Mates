@@ -9,9 +9,10 @@ const LandingPage = () => {
 
   const createRoom = async () => {
     try {
-      const res = await fetch("https://hangout-mates.onrender.com/api/rooms", {
-        method: "POST",
-      });
+      const res = await fetch("https://hangout-mates-1.onrender.com/api/rooms", {
+  method: "POST",
+});
+
       const data = await res.json();
       setRoomLink(data.roomLink);
       navigate(`/room/${data.roomId}`);

@@ -8,26 +8,32 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.use(cors({
-  origin: ["https://hangout-mates-1.onrender.com", "https://hangout-mates.onrender.com"],
-}));
+// app.use(cors({
+//   origin: ["https://hangout-mates-1.onrender.com", "https://hangout-mates.onrender.com"],
+// }));
 
 
 const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "https://hangout-mates-1.onrender.com",
+    origin: [
+      "https://hangout-mates.onrender.com", 
+      "http://localhost:5173", 
+    ],
     methods: ["GET", "POST"],
   },
 });
+
+
 
 const rooms = {};
 
 app.post("/api/rooms", (req, res) => {
   const roomId = Math.random().toString(36).substring(2, 6);
   const roomLink = `https://hangout-mates.onrender.com/room/${roomId}`;
-  console.log(FRONTEND_URL)
+  // const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+  // console.log(FRONTEND_URL)
   rooms[roomId] = { id: roomId, participants: [] };
   res.json({ roomId,roomLink  });
 });
@@ -90,8 +96,7 @@ io.on("connection", (socket) => {
     }
   });
 });
-
-const PORT = 5000;
+const PORT = process.env.PORT || 5000; 
 server.listen(PORT, () =>
   console.log(`Server 
     running on http://localhost:${PORT}`)
