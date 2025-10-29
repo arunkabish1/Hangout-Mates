@@ -8,34 +8,26 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// app.use(cors({
-//   origin: ["https://hangout-mates-1.onrender.com", "https://hangout-mates.onrender.com"],
-// }));
+app.use(cors({
+  origin: ["https://hangout-mates-1.onrender.com"],
+}));
 
 
 const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: [
-      "https://hangout-mates.onrender.com", 
-      "http://localhost:5173", 
-    ],
+    origin: "https://hangout-mates-1.onrender.com",
     methods: ["GET", "POST"],
   },
 });
-
-
 
 const rooms = {};
 
 app.post("/api/rooms", (req, res) => {
   const roomId = Math.random().toString(36).substring(2, 6);
-  const roomLink = `https://hangout-mates.onrender.com/room/${roomId}`;
-  // const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
-  // console.log(FRONTEND_URL)
   rooms[roomId] = { id: roomId, participants: [] };
-  res.json({ roomId,roomLink  });
+  res.json({ roomId });
 });
 
 io.on("connection", (socket) => {
@@ -43,11 +35,6 @@ io.on("connection", (socket) => {
 
   // ✅ When a user joins a room
   socket.on("join-room", ({ roomId, userName }) => {
-
-    if (!rooms[roomId]) {
-      socket.emit("error", "Room does not exist.");
-      return;
-    }
     console.log(`${userName} joined room ${roomId}`);
 
     // Join socket.io room
@@ -72,15 +59,6 @@ io.on("connection", (socket) => {
     });
   });
 
-   socket.on("chat-message", ({ name, message }) => {
-    // Find the room the user is in
-    const userRooms = Object.keys(socket.rooms).filter((r) => r !== socket.id);
-    userRooms.forEach((roomId) => {
-      // Broadcast message to all in the room except sender
-      socket.to(roomId).emit("chat-message", { name, message });
-    });
-  });
-
   // ✅ Handle disconnect
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
@@ -96,7 +74,8 @@ io.on("connection", (socket) => {
     }
   });
 });
-const PORT = process.env.PORT || 5000; 
+
+const PORT = 5000;
 server.listen(PORT, () =>
   console.log(`Server 
     running on http://localhost:${PORT}`)
